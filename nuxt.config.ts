@@ -36,7 +36,7 @@ export default defineNuxtConfig({
   },
 
   nitro: {
-    // On Netlify the preset is auto detected. Static keeps a clean SPA output locally.
+    preset: 'static',
     prerender: { crawlLinks: false, routes: [] }
   }
 })
