@@ -1,0 +1,2 @@
+# SPA fallback: client-side routes resolve to the app shell on direct load/refresh.
+/*    /index.html   200

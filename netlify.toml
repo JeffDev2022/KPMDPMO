@@ -1,0 +1,10 @@
+# Netlify deployment for the KPMD Programme Dashboard (Nuxt 3, client-side SPA).
+# The dashboard is generated as a pure static site (no serverless functions) and
+# served straight from Netlify's CDN. The _redirects file provides the SPA
+# fallback so deep links such as /reports resolve on refresh.
+[build]
+  command = "npm run generate"
+  publish = ".output/public"
+
+[build.environment]
+  NODE_VERSION = "20"
