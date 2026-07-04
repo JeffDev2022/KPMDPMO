@@ -12,7 +12,9 @@ const json = (statusCode, body) => ({
 
 const TYPE_LABEL = { weekly: 'Weekly', monthly: 'Monthly', quarterly: 'Quarterly' }
 
-exports.handler = async (event) => {
+exports.handler = async (event, context) => {
+  const user = context.clientContext && context.clientContext.user
+  if (!user) return json(401, { error: 'unauthorized' })
   if (event.httpMethod !== 'POST') return json(405, { error: 'method_not_allowed' })
   const root = process.env.GDRIVE_ROOT_FOLDER_ID
   if (!process.env.GDRIVE_SA_KEY || !root) return json(503, { error: 'not_configured' })
@@ -36,7 +38,7 @@ exports.handler = async (event) => {
       folderId,
       appProperties: {
         kpmd: '1', reportType, period, offtaker,
-        track: track || '', uploadedBy: uploadedBy || ''
+        track: track || '', uploadedBy: user.email || uploadedBy || ''
       },
       origin
     }, token)

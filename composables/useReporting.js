@@ -91,9 +91,14 @@ export function useReporting() {
   const load = async () => {
     loading.value = true; error.value = ''
     try {
-      const res = await fetch('/.netlify/functions/library')
+      const { getToken } = useAuth()
+      const token = await getToken()
+      if (!token) { configured.value = false; files.value = demoFiles(periods); return }
+      const res = await fetch('/.netlify/functions/library', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
       const data = await res.json()
-      if (data.configured) {
+      if (res.ok && data.configured) {
         configured.value = true
         files.value = data.files || []
       } else {
@@ -122,9 +127,12 @@ export function useReporting() {
 
   // Upload: init a resumable session via the function, then PUT bytes to Drive.
   const uploadReport = async (file, meta) => {
+    const { getToken } = useAuth()
+    const token = await getToken()
+    if (!token) throw new Error('Sign in to upload')
     const initRes = await fetch('/.netlify/functions/upload-init', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({
         fileName: file.name, mimeType: file.type,
         reportType: meta.reportType, period: meta.period, offtaker: meta.offtaker,

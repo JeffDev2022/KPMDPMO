@@ -3,6 +3,7 @@
   "private": true,
   "description": "Netlify Functions for the KPMD Reporting Hub (Google Drive storage).",
   "dependencies": {
+    "fflate": "^0.8.2",
     "google-auth-library": "^9.14.0"
   }
 }

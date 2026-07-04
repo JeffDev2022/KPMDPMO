@@ -9,7 +9,12 @@ const json = (statusCode, body) => ({
   body: JSON.stringify(body)
 })
 
-exports.handler = async () => {
+exports.handler = async (event, context) => {
+  // Netlify populates context.clientContext.user when a valid Identity JWT is
+  // sent in the Authorization header. No user means not signed in.
+  const user = context.clientContext && context.clientContext.user
+  if (!user) return json(401, { error: 'unauthorized' })
+
   if (!process.env.GDRIVE_SA_KEY || !process.env.GDRIVE_ROOT_FOLDER_ID) {
     return json(200, { configured: false, files: [] })
   }

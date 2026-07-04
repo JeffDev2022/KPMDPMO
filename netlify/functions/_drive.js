@@ -103,4 +103,49 @@ async function createResumableSession({ name, mimeType, folderId, appProperties,
   return sessionUri
 }
 
-module.exports = { getToken, ensurePath, listReports, createResumableSession }
+// Find a non-folder file by name under a parent. Returns {id,name,mimeType} or null.
+async function getFileByName(name, parentId, token) {
+  const safe = name.replace(/'/g, "\\'")
+  const q = encodeURIComponent(`name='${safe}' and '${parentId}' in parents and trashed=false`)
+  const data = await driveGet(`/files?q=${q}&fields=files(id,name,mimeType)&${ALL}`, token)
+  return (data.files && data.files[0]) || null
+}
+
+async function readFileText(fileId, token) {
+  const res = await fetch(`${DRIVE}/files/${fileId}?alt=media&${ALL}`, { headers: { Authorization: `Bearer ${token}` } })
+  if (!res.ok) throw new Error(`read_${res.status}`)
+  return res.text()
+}
+
+async function downloadFileBuffer(fileId, token) {
+  const res = await fetch(`${DRIVE}/files/${fileId}?alt=media&${ALL}`, { headers: { Authorization: `Bearer ${token}` } })
+  if (!res.ok) throw new Error(`download_${res.status}`)
+  return Buffer.from(await res.arrayBuffer())
+}
+
+// Create or overwrite a JSON file by name in a folder. Returns the file id.
+async function saveJsonFile(name, parentId, obj, token) {
+  const body = JSON.stringify(obj)
+  const existing = await getFileByName(name, parentId, token)
+  if (existing) {
+    const res = await fetch(`${UPLOAD}/files/${existing.id}?uploadType=media&${ALL}`, {
+      method: 'PATCH', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body
+    })
+    if (!res.ok) throw new Error(`save_patch_${res.status}:${await res.text()}`)
+    return existing.id
+  }
+  const boundary = 'kpmd' + Date.now()
+  const metadata = { name, parents: [parentId], mimeType: 'application/json' }
+  const multipart =
+    `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n` +
+    `--${boundary}\r\nContent-Type: application/json\r\n\r\n${body}\r\n--${boundary}--`
+  const res = await fetch(`${UPLOAD}/files?uploadType=multipart&${ALL}&fields=id`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': `multipart/related; boundary=${boundary}` },
+    body: multipart
+  })
+  if (!res.ok) throw new Error(`save_create_${res.status}:${await res.text()}`)
+  return (await res.json()).id
+}
+
+module.exports = { getToken, ensurePath, listReports, createResumableSession, getFileByName, readFileText, downloadFileBuffer, saveJsonFile }
