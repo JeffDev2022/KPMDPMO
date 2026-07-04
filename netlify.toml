@@ -1,10 +1,14 @@
-# Netlify deployment for the KPMD Programme Dashboard (Nuxt 3, client-side SPA).
-# The dashboard is generated as a pure static site (no serverless functions) and
-# served straight from Netlify's CDN. The _redirects file provides the SPA
-# fallback so deep links such as /reports resolve on refresh.
+# Netlify deployment for the KPMD Programme Dashboard (Nuxt 3 SPA + Functions).
+# The front end is a pure static SPA generated to .output/public. The Reporting
+# Hub adds serverless functions (in netlify/functions) that talk to Google Drive
+# via a service account. Static hosting and functions coexist cleanly.
 [build]
   command = "npm run generate"
   publish = ".output/public"
 
 [build.environment]
   NODE_VERSION = "20"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"

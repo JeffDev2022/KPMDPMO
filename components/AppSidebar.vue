@@ -46,7 +46,8 @@ const ICON = {
   deliverables: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>',
   offtakers: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 21V8l9-5 9 5v13"/><path d="M9 21v-6h6v6"/></svg>',
   pipeline: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 7h6l2 3h10"/><path d="M3 12h11l2 3h5"/><circle cx="20" cy="7" r="1.5"/><circle cx="21" cy="15" r="1.5"/></svg>',
-  reports: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg>'
+  reports: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg>',
+  hub: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/></svg>'
 }
 
 const ALL = [
@@ -58,6 +59,7 @@ const ALL = [
   { key: 'deliverables', to: '/deliverables', label: 'Deliverables' },
   { key: 'offtakers', to: '/offtakers', label: 'Offtakers' },
   { key: 'pipeline', to: '/pipeline', label: 'Co-investment' },
+  { key: 'hub', to: '/hub', label: 'Reporting Hub' },
   { key: 'reports', to: '/reports', label: 'Reports' }
 ]
 

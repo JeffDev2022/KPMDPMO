@@ -36,6 +36,10 @@ export default defineNuxtConfig({
   },
 
   nitro: {
+    // Pin the static preset so the output is always a pure static SPA in
+    // .output/public, on every machine. Without this, Nuxt detects NETLIFY=true
+    // in the Netlify build and auto-switches to the netlify server preset, which
+    // writes to dist and leaves .output/public missing, breaking the deploy.
     preset: 'static',
     prerender: { crawlLinks: false, routes: [] }
   }

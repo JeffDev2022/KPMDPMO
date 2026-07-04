@@ -19,7 +19,7 @@ export const ROLES = {
     label: 'Programme staff',
     lens: 'Operational lens',
     landing: '/daily',
-    nav: ['daily', 'weekly', 'monthly', 'deliverables', 'offtakers', 'pipeline', 'reports']
+    nav: ['daily', 'weekly', 'monthly', 'deliverables', 'offtakers', 'pipeline', 'hub', 'reports']
   },
   donor: {
     id: 'donor',
@@ -33,7 +33,7 @@ export const ROLES = {
     label: 'Administrator',
     lens: 'Full access',
     landing: '/monthly',
-    nav: ['daily', 'weekly', 'monthly', 'quarterly', 'yearly', 'deliverables', 'offtakers', 'pipeline', 'reports']
+    nav: ['daily', 'weekly', 'monthly', 'quarterly', 'yearly', 'deliverables', 'offtakers', 'pipeline', 'hub', 'reports']
   }
 }
 
