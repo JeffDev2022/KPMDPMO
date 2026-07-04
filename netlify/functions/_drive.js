@@ -10,23 +10,52 @@
 // uploads into My Drive fail. A Shared Drive owns the storage. All calls below
 // set supportsAllDrives=true accordingly. See REPORTING_SETUP.md.
 // ---------------------------------------------------------------------------
-const { JWT } = require('google-auth-library')
-
-const SCOPES = ['https://www.googleapis.com/auth/drive']
+// Auth uses a hand-rolled service-account JWT signed with Node's built-in
+// crypto, then exchanged for an access token. This avoids bundling
+// google-auth-library, which does not package reliably in Netlify Functions.
+const crypto = require('crypto')
 
 function readServiceAccount() {
-  const b64 = process.env.GDRIVE_SA_KEY
-  if (!b64) throw new Error('missing_GDRIVE_SA_KEY')
-  const json = JSON.parse(Buffer.from(b64, 'base64').toString('utf8'))
-  return { client_email: json.client_email, private_key: json.private_key }
+  const raw = process.env.GDRIVE_SA_KEY
+  if (!raw) throw new Error('missing_GDRIVE_SA_KEY')
+  // Expect base64 of the key JSON, but tolerate raw JSON being pasted directly.
+  let text = Buffer.from(raw, 'base64').toString('utf8')
+  if (!text.trim().startsWith('{')) text = raw
+  const json = JSON.parse(text)
+  let key = json.private_key || ''
+  if (key.includes('\\n')) key = key.replace(/\\n/g, '\n')   // undo double-escaping
+  return { client_email: json.client_email, private_key: key }
 }
 
+const b64url = (input) => Buffer.from(input).toString('base64').replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')
+
+let cachedToken = null
+let cachedExp = 0
 async function getToken() {
+  const now = Math.floor(Date.now() / 1000)
+  if (cachedToken && now < cachedExp - 60) return cachedToken
   const sa = readServiceAccount()
-  const client = new JWT({ email: sa.client_email, key: sa.private_key, scopes: SCOPES })
-  const { token } = await client.getAccessToken()
-  if (!token) throw new Error('token_failed')
-  return token
+  const header = b64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }))
+  const claims = b64url(JSON.stringify({
+    iss: sa.client_email,
+    scope: 'https://www.googleapis.com/auth/drive',
+    aud: 'https://oauth2.googleapis.com/token',
+    iat: now, exp: now + 3600
+  }))
+  const signingInput = `${header}.${claims}`
+  const signature = crypto.createSign('RSA-SHA256').update(signingInput).sign(sa.private_key)
+    .toString('base64').replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')
+  const assertion = `${signingInput}.${signature}`
+  const res = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion })
+  })
+  if (!res.ok) throw new Error(`token_${res.status}:${(await res.text()).slice(0, 300)}`)
+  const data = await res.json()
+  cachedToken = data.access_token
+  cachedExp = now + (data.expires_in || 3600)
+  return cachedToken
 }
 
 const DRIVE = 'https://www.googleapis.com/drive/v3'
