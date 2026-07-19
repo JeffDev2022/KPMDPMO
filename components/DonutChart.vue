@@ -3,7 +3,7 @@
     <svg viewBox="0 0 42 42" class="donut">
       <circle class="ring-bg" cx="21" cy="21" r="15.915" />
       <circle
-        v-for="(seg, i) in computed" :key="i"
+        v-for="(seg, i) in arcs" :key="i"
         class="ring-seg" cx="21" cy="21" r="15.915"
         :stroke="seg.color" :stroke-dasharray="`${seg.pct} ${100 - seg.pct}`"
         :stroke-dashoffset="seg.offset"
@@ -23,7 +23,7 @@
 <script setup>
 const props = defineProps({ segments: { type: Array, default: () => [] }, centerValue: [String, Number], centerLabel: String })
 const total = computed(() => props.segments.reduce((s, x) => s + x.value, 0) || 1)
-const computed = computed(() => {
+const arcs = computed(() => {
   let acc = 0
   return props.segments.map((s) => {
     const pct = (s.value / total.value) * 100
