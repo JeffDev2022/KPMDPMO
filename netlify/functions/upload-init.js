@@ -10,7 +10,7 @@ const json = (statusCode, body) => ({
   body: JSON.stringify(body)
 })
 
-const TYPE_LABEL = { weekly: 'Weekly', monthly: 'Monthly', quarterly: 'Quarterly' }
+const TYPE_LABEL = { weekly: 'Weekly', monthly: 'Monthly', quarterly: 'Quarterly', yearly: 'Yearly' }
 
 exports.handler = async (event, context) => {
   const user = context.clientContext && context.clientContext.user
@@ -22,22 +22,33 @@ exports.handler = async (event, context) => {
   let body
   try { body = JSON.parse(event.body || '{}') } catch { return json(400, { error: 'bad_json' }) }
 
-  const { fileName, mimeType, reportType, period, offtaker, track, uploadedBy } = body
-  if (!fileName || !reportType || !period || !offtaker) {
-    return json(400, { error: 'missing_fields', need: ['fileName', 'reportType', 'period', 'offtaker'] })
+  const { fileName, mimeType, reportType, period, offtaker, scope, track, uploadedBy } = body
+  const isConsolidated = scope === 'consolidated'
+  if (!fileName || !reportType || !period || (!isConsolidated && !offtaker)) {
+    return json(400, {
+      error: 'missing_fields',
+      need: ['fileName', 'reportType', 'period', isConsolidated ? 'scope' : 'offtaker']
+    })
   }
 
   try {
     const token = await getToken()
     const typeFolder = TYPE_LABEL[reportType] || reportType
-    const folderId = await ensurePath([typeFolder, period, offtaker], root, token)
+    // Consolidated summaries live under Consolidated / <Cadence> / <period>;
+    // offtaker reports under <Cadence> / <period> / <offtaker>.
+    const segments = isConsolidated
+      ? ['Consolidated', typeFolder, period]
+      : [typeFolder, period, offtaker]
+    const folderId = await ensurePath(segments, root, token)
     const origin = event.headers.origin || process.env.URL || ''
     const sessionUri = await createResumableSession({
       name: fileName,
       mimeType,
       folderId,
       appProperties: {
-        kpmd: '1', reportType, period, offtaker,
+        kpmd: '1', reportType, period,
+        offtaker: isConsolidated ? '' : offtaker,
+        scope: isConsolidated ? 'consolidated' : 'offtaker',
         track: track || '', uploadedBy: user.email || uploadedBy || ''
       },
       origin

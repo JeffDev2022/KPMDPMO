@@ -27,13 +27,14 @@
         <div>
           <label class="field-label">Report type</label>
           <select class="select" v-model="up.reportType">
-            <option v-for="t in REPORT_TYPES" :key="t.id" :value="t.id">{{ t.label }}</option>
+            <option v-for="t in reportTypeOptions" :key="t.id" :value="t.id">{{ t.label }}</option>
           </select>
         </div>
         <div>
           <label class="field-label">Offtaker</label>
           <select class="select" v-model="up.offtaker">
             <option v-for="o in OFFTAKERS" :key="o.id" :value="o.id">{{ o.name }}</option>
+            <option value="consolidated">Consolidated (all offtakers)</option>
           </select>
         </div>
         <div>
@@ -83,7 +84,7 @@
         <label class="field-label">Type</label>
         <select class="select" v-model="filterType">
           <option value="">All types</option>
-          <option v-for="t in REPORT_TYPES" :key="t.id" :value="t.id">{{ t.label }}</option>
+          <option v-for="t in ALL_TYPES" :key="t.id" :value="t.id">{{ t.label }}</option>
         </select>
       </div>
       <div>
@@ -91,6 +92,7 @@
         <select class="select" v-model="filterOfftaker">
           <option value="">All offtakers</option>
           <option v-for="o in OFFTAKERS" :key="o.id" :value="o.id">{{ o.name }}</option>
+          <option value="consolidated">Consolidated</option>
         </select>
       </div>
       <div class="result-count">{{ filteredFiles.length }} file{{ filteredFiles.length === 1 ? '' : 's' }}</div>
@@ -102,8 +104,8 @@
         <tbody>
           <tr v-for="f in filteredFiles" :key="f.id">
             <td class="strong">{{ f.name }}</td>
-            <td><span class="tag-outputs">{{ typeLabel(f.reportType) }}</span></td>
-            <td class="muted">{{ offtakerName(f.offtaker) }}</td>
+            <td><span class="tag-outputs">{{ fileTypeLabel(f) }}</span></td>
+            <td class="muted">{{ offtakerName(f) }}</td>
             <td class="muted">{{ f.period }}</td>
             <td class="muted">{{ fmtDate(f.createdTime) }}</td>
             <td class="num"><a v-if="f.link && f.link !== '#demo'" :href="f.link" target="_blank" class="link">Open ↗</a><span v-else class="muted" style="font-size:11.5px">demo</span></td>
@@ -114,7 +116,7 @@
     </div>
 
     <div class="note" style="margin-top:18px">
-      <b>Next: consolidation.</b> Phase two adds the consolidation studio. Capture each offtaker's headline figures once, and the hub generates the consolidated monthly and quarterly decks on the SBS template, downloadable in PowerPoint or Word, from the same numbers that drive the live tiers.
+      <b>Consolidated reports.</b> Pick <b>Consolidated (all offtakers)</b> in the upload panel to store the single summary of every offtaker report for a weekly, monthly, quarterly or yearly period. These land under a dedicated <b>Consolidated</b> folder in the programme Drive and are listed above alongside the offtaker submissions.
     </div>
   </div>
 </template>
@@ -122,7 +124,7 @@
 <script setup>
 const {
   files, configured, periods, load, tracker, summary,
-  uploadReport, OFFTAKERS, REPORT_TYPES
+  uploadReport, OFFTAKERS, REPORT_TYPES, CONSOLIDATED_TYPES
 } = useReporting()
 
 onMounted(load)
@@ -132,7 +134,21 @@ const up = reactive({ reportType: 'weekly', offtaker: 'genco', period: '', file:
 const uploading = ref(false)
 const uploadMsg = ref('')
 
-watchEffect(() => { if (!up.period) up.period = periods[up.reportType] })
+// A consolidated report is programme-level: it can be weekly, monthly, quarterly
+// or yearly. Offtaker submissions stay weekly/monthly/quarterly.
+const isConsolidated = computed(() => up.offtaker === 'consolidated')
+const reportTypeOptions = computed(() => isConsolidated.value ? CONSOLIDATED_TYPES : REPORT_TYPES)
+
+// If we leave the consolidated selection while on a consolidated-only cadence
+// (yearly), fall back to a cadence the offtaker actually reports on.
+watch(() => up.offtaker, () => {
+  if (!isConsolidated.value && !REPORT_TYPES.some((t) => t.id === up.reportType)) {
+    up.reportType = 'weekly'
+  }
+})
+
+// Keep the period in step with the selected cadence.
+watch(() => up.reportType, (t) => { up.period = periods[t] }, { immediate: true })
 
 const onFile = (e) => { up.file = e.target.files?.[0] || null }
 const canUpload = computed(() => up.file && up.reportType && up.offtaker && up.period && configured.value)
@@ -140,7 +156,12 @@ const doUpload = async () => {
   if (!configured.value) { uploadMsg.value = 'Drive not configured yet. Connect it to enable upload.'; return }
   uploading.value = true; uploadMsg.value = ''
   try {
-    await uploadReport(up.file, { reportType: up.reportType, offtaker: up.offtaker, period: up.period || periods[up.reportType] })
+    await uploadReport(up.file, {
+      reportType: up.reportType,
+      offtaker: up.offtaker,
+      period: up.period || periods[up.reportType],
+      scope: isConsolidated.value ? 'consolidated' : 'offtaker'
+    })
     uploadMsg.value = 'Uploaded.'
     up.file = null
   } catch (e) {
@@ -150,15 +171,26 @@ const doUpload = async () => {
   }
 }
 
+// Report library. Consolidated files carry scope 'consolidated' (no offtaker),
+// so they surface under the "Consolidated" filter and label.
+const ALL_TYPES = CONSOLIDATED_TYPES   // weekly, monthly, quarterly, yearly
 const filterType = ref('')
 const filterOfftaker = ref('')
-const filteredFiles = computed(() => files.value.filter((f) =>
-  (!filterType.value || f.reportType === filterType.value) &&
-  (!filterOfftaker.value || f.offtaker === filterOfftaker.value)
-))
+const filteredFiles = computed(() => files.value.filter((f) => {
+  const typeOk = !filterType.value || f.reportType === filterType.value
+  let offtakerOk
+  if (!filterOfftaker.value) offtakerOk = true
+  else if (filterOfftaker.value === 'consolidated') offtakerOk = f.scope === 'consolidated'
+  else offtakerOk = f.scope !== 'consolidated' && f.offtaker === filterOfftaker.value
+  return typeOk && offtakerOk
+}))
 
-const typeLabel = (id) => REPORT_TYPES.find((t) => t.id === id)?.label || id || '—'
-const offtakerName = (id) => OFFTAKERS.find((o) => o.id === id)?.name || id || '—'
+const fileTypeLabel = (f) => (f.scope === 'consolidated'
+  ? CONSOLIDATED_TYPES.find((t) => t.id === f.reportType)?.label
+  : REPORT_TYPES.find((t) => t.id === f.reportType)?.label) || f.reportType || '—'
+const offtakerName = (f) => f.scope === 'consolidated'
+  ? 'Consolidated'
+  : (OFFTAKERS.find((o) => o.id === f.offtaker)?.name || f.offtaker || '—')
 const fmtDate = (s) => s ? new Date(s).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'
 </script>
 

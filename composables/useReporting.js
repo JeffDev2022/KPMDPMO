@@ -21,6 +21,15 @@ export const REPORT_TYPES = [
   { id: 'quarterly', label: 'Quarterly (with P&L)', due: 'Month after quarter end' }
 ]
 
+// Consolidated (programme-level) report cadences. A consolidated report is the
+// single summary of all offtaker reports for a period, stored once per period.
+export const CONSOLIDATED_TYPES = [
+  { id: 'weekly', label: 'Weekly' },
+  { id: 'monthly', label: 'Monthly' },
+  { id: 'quarterly', label: 'Quarterly' },
+  { id: 'yearly', label: 'Yearly' }
+]
+
 // ---- period helpers --------------------------------------------------------
 function isoWeek(d) {
   const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()))
@@ -37,7 +46,8 @@ export function currentPeriods(ref = new Date()) {
   return {
     weekly: `${year}-W${String(week).padStart(2, '0')}`,
     monthly: `${ref.getFullYear()}-${String(month).padStart(2, '0')}`,
-    quarterly: `${ref.getFullYear()}-Q${quarter}`
+    quarterly: `${ref.getFullYear()}-Q${quarter}`,
+    yearly: `${ref.getFullYear()}`
   }
 }
 
@@ -45,9 +55,15 @@ export function currentPeriods(ref = new Date()) {
 function demoFiles(periods) {
   const f = (offtaker, reportType, period, name) => ({
     id: `demo-${offtaker}-${reportType}-${period}`,
-    name, reportType, period, offtaker, track: '', link: '#demo',
+    name, reportType, period, offtaker, scope: 'offtaker', track: '', link: '#demo',
     createdTime: '2026-06-02T08:00:00Z', mimeType:
       'application/vnd.openxmlformats-officedocument.presentationml.presentation', size: 5100000, demo: true
+  })
+  const c = (reportType, period, name) => ({
+    id: `demo-consolidated-${reportType}-${period}`,
+    name, reportType, period, offtaker: '', scope: 'consolidated', track: '', link: '#demo',
+    createdTime: '2026-06-05T09:00:00Z', mimeType:
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation', size: 6200000, demo: true
   })
   return [
     f('genco', 'weekly', periods.weekly, 'Genco_Weekly_wk23.pptx'),
@@ -55,7 +71,10 @@ function demoFiles(periods) {
     f('livemo', 'weekly', periods.weekly, 'LiveMo_Weekly_wk23.pptx'),
     f('abf', 'weekly', periods.weekly, 'ABF_Weekly_wk23.pptx'),
     f('livemo', 'monthly', periods.monthly, 'LiveMo_Monthly_Jun.pptx'),
-    f('chillzone', 'quarterly', periods.quarterly, 'ChillZone_Q2_PnL.xlsx')
+    f('chillzone', 'quarterly', periods.quarterly, 'ChillZone_Q2_PnL.xlsx'),
+    // Consolidated (programme-level) summaries.
+    c('monthly', periods.monthly, 'KPMD_Monthly_Consolidated_Jun.pptx'),
+    c('quarterly', periods.quarterly, 'KPMD_Quarterly_Consolidated_Q2.docx')
   ]
 }
 
@@ -64,7 +83,8 @@ function demoFiles(periods) {
 // missing from the file set. Returns rows keyed by offtaker.
 export function computeTracker(files, periods) {
   const has = (offtaker, type) => files.find(
-    (x) => x.offtaker === offtaker && x.reportType === type && x.period === periods[type]
+    (x) => x.scope !== 'consolidated' && x.offtaker === offtaker &&
+      x.reportType === type && x.period === periods[type]
   )
   return OFFTAKERS.map((o) => {
     const cell = (type) => {
@@ -135,7 +155,8 @@ export function useReporting() {
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({
         fileName: file.name, mimeType: file.type,
-        reportType: meta.reportType, period: meta.period, offtaker: meta.offtaker,
+        reportType: meta.reportType, period: meta.period,
+        offtaker: meta.offtaker || '', scope: meta.scope || 'offtaker',
         track: meta.track || '', uploadedBy: meta.uploadedBy || ''
       })
     })
@@ -153,7 +174,7 @@ export function useReporting() {
 
   return {
     files, configured, loading, error, periods,
-    OFFTAKERS, REPORT_TYPES,
+    OFFTAKERS, REPORT_TYPES, CONSOLIDATED_TYPES,
     load, tracker, summary, uploadReport
   }
 }

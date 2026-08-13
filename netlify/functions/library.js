@@ -28,6 +28,7 @@ exports.handler = async (event, context) => {
       reportType: f.appProperties?.reportType || null,
       period: f.appProperties?.period || null,
       offtaker: f.appProperties?.offtaker || null,
+      scope: f.appProperties?.scope || 'offtaker',
       track: f.appProperties?.track || null
     }))
     return json(200, { configured: true, files: mapped })
