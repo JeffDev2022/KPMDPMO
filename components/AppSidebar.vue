@@ -27,6 +27,10 @@
     </nav>
 
     <div class="foot">
+      <button class="signout" @click="signOut">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h9"/><path d="M11 12h9M17 8l4 4-4 4"/></svg>
+        <span>Sign out</span>
+      </button>
       <div class="foot-line">Investment {{ programme.investmentId }}</div>
       <div class="foot-line muted-foot">Strathmore University Business School</div>
     </div>
@@ -35,7 +39,9 @@
 
 <script setup>
 import { programme } from '~/data/seed.js'
-const { roleMeta, can } = useAuth()
+const { roleMeta, can, logout } = useAuth()
+
+const signOut = () => { logout(); navigateTo('/login') }
 
 const ICON = {
   daily: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
@@ -106,6 +112,15 @@ const items = computed(() => ALL.filter((i) => can(i.key)).map((i) => ({ ...i, i
 }
 .nav-item.active .tier { background: rgba(201,162,39,0.3); color: #f0d997; }
 .foot { margin-top: auto; padding: 14px 8px 4px; border-top: 1px solid rgba(255,255,255,0.08); }
+.signout {
+  display: flex; align-items: center; gap: 10px; width: 100%; cursor: pointer;
+  margin-bottom: 12px; padding: 10px 12px; border-radius: 9px; font-family: inherit;
+  font-size: 13px; font-weight: 600; text-align: left;
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.10); color: #dbe3f2;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.signout:hover { background: rgba(224,90,90,0.16); border-color: rgba(224,90,90,0.5); color: #ffb4b4; }
+.signout svg { width: 17px; height: 17px; flex-shrink: 0; }
 .foot-line { font-size: 11px; color: #9fb0cf; }
 .muted-foot { color: #6f82a4; margin-top: 2px; }
 @media (max-width: 880px) {
