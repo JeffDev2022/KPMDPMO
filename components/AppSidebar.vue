@@ -1,5 +1,6 @@
 <template>
-  <aside class="sidebar">
+  <div v-if="open" class="scrim" @click="close"></div>
+  <aside class="sidebar" :class="{ open }">
     <div class="brand">
       <div class="logo">SU</div>
       <div class="brand-txt">
@@ -19,6 +20,7 @@
         :to="item.to"
         class="nav-item"
         active-class="active"
+        @click="close"
       >
         <span class="ic" v-html="item.icon"></span>
         <span>{{ item.label }}</span>
@@ -40,8 +42,9 @@
 <script setup>
 import { programme } from '~/data/seed.js'
 const { roleMeta, can, logout } = useAuth()
+const { open, close } = useSidebar()
 
-const signOut = () => { logout(); navigateTo('/login') }
+const signOut = () => { close(); logout(); navigateTo('/login') }
 
 const ICON = {
   daily: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
@@ -123,7 +126,10 @@ const items = computed(() => ALL.filter((i) => can(i.key)).map((i) => ({ ...i, i
 .signout svg { width: 17px; height: 17px; flex-shrink: 0; }
 .foot-line { font-size: 11px; color: #9fb0cf; }
 .muted-foot { color: #6f82a4; margin-top: 2px; }
+.scrim { display: none; }
 @media (max-width: 880px) {
-  .sidebar { transform: translateX(-100%); transition: transform 0.2s; }
+  .sidebar { transform: translateX(-100%); transition: transform 0.22s ease; }
+  .sidebar.open { transform: translateX(0); box-shadow: 0 0 50px rgba(0,0,0,0.45); }
+  .scrim { display: block; position: fixed; inset: 0; z-index: 29; background: rgba(10,16,30,0.5); }
 }
 </style>

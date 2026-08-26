@@ -1,8 +1,13 @@
 <template>
   <header class="topbar">
     <div class="left">
-      <div class="t-title">{{ programme.short }} Programme</div>
-      <div class="t-sub">{{ programme.name }}</div>
+      <button class="burger" @click="toggleSidebar" aria-label="Open navigation menu" :aria-expanded="sidebarOpen">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+      <div class="titles">
+        <div class="t-title">{{ programme.short }} Programme</div>
+        <div class="t-sub">{{ programme.name }}</div>
+      </div>
     </div>
 
     <div class="right">
@@ -27,6 +32,7 @@
 <script setup>
 import { programme } from '~/data/seed.js'
 const { user, roleMeta, logout } = useAuth()
+const { open: sidebarOpen, toggle: toggleSidebar } = useSidebar()
 const open = ref(false)
 
 const initials = computed(() => {
@@ -48,6 +54,10 @@ if (import.meta.client) {
   border-bottom: 1px solid var(--border);
   display: flex; align-items: center; justify-content: space-between; padding: 0 30px;
 }
+.left { display: flex; align-items: center; gap: 12px; }
+.burger { display: none; align-items: center; justify-content: center; background: none; border: none; cursor: pointer; color: var(--navy-dk); padding: 6px; border-radius: 8px; }
+.burger:hover { background: var(--grey-soft); }
+.burger svg { width: 22px; height: 22px; display: block; }
 .t-title { font-weight: 700; font-size: 15px; color: var(--navy-dk); }
 .t-sub { font-size: 11.5px; color: var(--ink-3); }
 .right { display: flex; align-items: center; gap: 18px; }
@@ -68,5 +78,6 @@ if (import.meta.client) {
 .menu-item { display: block; width: 100%; text-align: left; background: none; border: none; cursor: pointer; padding: 8px 10px; border-radius: 7px; font-size: 13px; font-family: inherit; color: var(--ink); }
 .menu-item:hover { background: var(--grey-soft); }
 .menu-item.danger { color: var(--red); }
+@media (max-width: 880px) { .burger { display: inline-flex; } }
 @media (max-width: 720px) { .u-meta { display: none; } .t-sub { display: none; } }
 </style>
