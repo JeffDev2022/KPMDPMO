@@ -172,9 +172,44 @@ export function useReporting() {
     return true
   }
 
+  // Download a stored report. The files live in a service-account-owned Shared
+  // Drive, so the raw Drive link shows "request access" to everyone else. We
+  // fetch the bytes through our own authenticated function and save them, so any
+  // signed-in user can download without a Google account or Drive sharing.
+  const downloadFile = async (file) => {
+    if (!import.meta.client || !file || !file.id || file.link === '#demo') return
+    const { getToken } = useAuth()
+    const token = await getToken()
+    if (!token) { if (file.link) window.open(file.link, '_blank'); return }
+
+    const res = await fetch(`/.netlify/functions/download?fileId=${encodeURIComponent(file.id)}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+
+    // Oversized files cannot be proxied within the function response limit; fall
+    // back to the Drive link (works for anyone with Drive access).
+    if (res.status === 413) {
+      if (file.link && file.link !== '#demo') { window.open(file.link, '_blank'); return }
+      throw new Error('This file is too large to download through the dashboard.')
+    }
+    if (!res.ok) {
+      let msg = 'Download failed'
+      try { msg = (await res.json()).error || msg } catch {}
+      throw new Error(msg)
+    }
+
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = file.name || 'report'
+    document.body.appendChild(a); a.click(); document.body.removeChild(a)
+    setTimeout(() => URL.revokeObjectURL(url), 1500)
+  }
+
   return {
     files, configured, loading, error, periods,
     OFFTAKERS, REPORT_TYPES, CONSOLIDATED_TYPES,
-    load, tracker, summary, uploadReport
+    load, tracker, summary, uploadReport, downloadFile
   }
 }

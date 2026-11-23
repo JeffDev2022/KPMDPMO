@@ -69,9 +69,9 @@
                 <div class="strong">{{ row.name }}</div>
                 <div class="muted" style="font-size:11.5px">{{ row.counties }}</div>
               </td>
-              <td><TrackerCell :cell="row.weekly" :offtaker="row.name" type="weekly" /></td>
-              <td><TrackerCell :cell="row.monthly" :offtaker="row.name" type="monthly" /></td>
-              <td><TrackerCell :cell="row.quarterly" :offtaker="row.name" type="quarterly" /></td>
+              <td><TrackerCell :cell="row.weekly" :offtaker="row.name" type="weekly" :downloading="downloadingId" @download="download" /></td>
+              <td><TrackerCell :cell="row.monthly" :offtaker="row.name" type="monthly" :downloading="downloadingId" @download="download" /></td>
+              <td><TrackerCell :cell="row.quarterly" :offtaker="row.name" type="quarterly" :downloading="downloadingId" @download="download" /></td>
             </tr>
           </tbody>
         </table>
@@ -108,11 +108,12 @@
             <td class="muted">{{ offtakerName(f) }}</td>
             <td class="muted">{{ f.period }}</td>
             <td class="muted">{{ fmtDate(f.createdTime) }}</td>
-            <td class="num"><a v-if="f.link && f.link !== '#demo'" :href="f.link" target="_blank" class="link">Open ↗</a><span v-else class="muted" style="font-size:11.5px">demo</span></td>
+            <td class="num"><button v-if="f.id && f.link !== '#demo'" class="linkbtn" :disabled="downloadingId === f.id" @click="download(f)">{{ downloadingId === f.id ? 'Downloading…' : 'Download ↓' }}</button><span v-else class="muted" style="font-size:11.5px">demo</span></td>
           </tr>
           <tr v-if="!filteredFiles.length"><td colspan="6" class="muted" style="text-align:center; padding:20px">No files match.</td></tr>
         </tbody>
       </table>
+      <div v-if="downloadMsg" class="dl-error">{{ downloadMsg }}</div>
     </div>
 
     <div class="note" style="margin-top:18px">
@@ -124,10 +125,27 @@
 <script setup>
 const {
   files, configured, periods, load, tracker, summary,
-  uploadReport, OFFTAKERS, REPORT_TYPES, CONSOLIDATED_TYPES
+  uploadReport, downloadFile, OFFTAKERS, REPORT_TYPES, CONSOLIDATED_TYPES
 } = useReporting()
 
 onMounted(load)
+
+// Download a stored report, with a transient per-file state for the button and
+// a shared error line. downloadingId drives the "Downloading…" label.
+const downloadingId = ref('')
+const downloadMsg = ref('')
+const download = async (f) => {
+  if (!f || downloadingId.value) return
+  downloadingId.value = f.id
+  downloadMsg.value = ''
+  try {
+    await downloadFile(f)
+  } catch (e) {
+    downloadMsg.value = `Could not download ${f.name}: ${e.message || e}`
+  } finally {
+    downloadingId.value = ''
+  }
+}
 
 const showUpload = ref(false)
 const up = reactive({ reportType: 'weekly', offtaker: 'genco', period: '', file: null })
@@ -202,5 +220,9 @@ const fmtDate = (s) => s ? new Date(s).toLocaleDateString('en-GB', { day: '2-dig
 .result-count { font-size: 12.5px; color: var(--ink-3); font-weight: 600; padding-bottom: 10px; }
 .input.file { padding: 7px 10px; }
 .link { color: var(--navy); font-weight: 600; font-size: 12.5px; }
+.linkbtn { color: var(--navy); font-weight: 600; font-size: 12.5px; background: none; border: none; padding: 0; cursor: pointer; font-family: inherit; }
+.linkbtn:hover { text-decoration: underline; }
+.linkbtn:disabled { color: var(--ink-3, #8a94a6); cursor: default; text-decoration: none; }
+.dl-error { margin-top: 10px; font-size: 12px; color: var(--red, #c0392b); }
 @media (max-width: 820px) { .up-grid { grid-template-columns: 1fr 1fr; } .filters { grid-template-columns: 1fr; } }
 </style>

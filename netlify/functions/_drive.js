@@ -152,6 +152,13 @@ async function downloadFileBuffer(fileId, token) {
   return Buffer.from(await res.arrayBuffer())
 }
 
+// Metadata for a single file (name, type, size, link). Used by the download
+// proxy to set the right filename/Content-Type and to size-check before it
+// buffers the bytes into a function response.
+async function getFileMeta(fileId, token) {
+  return driveGet(`/files/${fileId}?fields=id,name,mimeType,size,webViewLink&${ALL}`, token)
+}
+
 // Create or overwrite a JSON file by name in a folder. Returns the file id.
 async function saveJsonFile(name, parentId, obj, token) {
   const body = JSON.stringify(obj)
@@ -177,4 +184,4 @@ async function saveJsonFile(name, parentId, obj, token) {
   return (await res.json()).id
 }
 
-module.exports = { getToken, ensurePath, listReports, createResumableSession, getFileByName, readFileText, downloadFileBuffer, saveJsonFile }
+module.exports = { getToken, ensurePath, listReports, createResumableSession, getFileByName, readFileText, downloadFileBuffer, getFileMeta, saveJsonFile }
