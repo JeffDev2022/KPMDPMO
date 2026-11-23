@@ -174,37 +174,38 @@ export function useReporting() {
 
   // Download a stored report. The files live in a service-account-owned Shared
   // Drive, so the raw Drive link shows "request access" to everyone else. We
-  // fetch the bytes through our own authenticated function and save them, so any
-  // signed-in user can download without a Google account or Drive sharing.
+  // authenticate here, get a short-lived signed ticket, then stream the file
+  // through our own function — so any signed-in user can download without a
+  // Google account or Drive sharing. Files over the 20MB streaming limit fall
+  // back to the Drive link (which still works for anyone with Drive access).
   const downloadFile = async (file) => {
     if (!import.meta.client || !file || !file.id || file.link === '#demo') return
     const { getToken } = useAuth()
     const token = await getToken()
     if (!token) { if (file.link) window.open(file.link, '_blank'); return }
 
-    const res = await fetch(`/.netlify/functions/download?fileId=${encodeURIComponent(file.id)}`, {
+    const res = await fetch(`/.netlify/functions/download-ticket?fileId=${encodeURIComponent(file.id)}`, {
       headers: { Authorization: `Bearer ${token}` }
     })
-
-    // Oversized files cannot be proxied within the function response limit; fall
-    // back to the Drive link (works for anyone with Drive access).
-    if (res.status === 413) {
-      if (file.link && file.link !== '#demo') { window.open(file.link, '_blank'); return }
-      throw new Error('This file is too large to download through the dashboard.')
-    }
     if (!res.ok) {
       let msg = 'Download failed'
       try { msg = (await res.json()).error || msg } catch {}
       throw new Error(msg)
     }
+    const data = await res.json()
 
-    const blob = await res.blob()
-    const url = URL.createObjectURL(blob)
+    // Over the streaming limit — fall back to opening the file in Drive.
+    if (data.tooLarge) {
+      if (data.link) { window.open(data.link, '_blank'); return }
+      throw new Error('This file is too large to download through the dashboard.')
+    }
+
+    // Navigate to the streaming endpoint; Content-Disposition makes the browser
+    // save it (streamed straight to disk, so large files don't buffer in memory).
     const a = document.createElement('a')
-    a.href = url
+    a.href = data.url
     a.download = file.name || 'report'
     document.body.appendChild(a); a.click(); document.body.removeChild(a)
-    setTimeout(() => URL.revokeObjectURL(url), 1500)
   }
 
   return {
